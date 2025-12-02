@@ -1,5 +1,6 @@
 # EduLink
 🧠 EduLink+ | Akıllı, Kişiselleştirilmiş Öğrenme Asistanı (Web)
+
 ✨ Proje Özeti
 EduLink+, öğrencilerin ders çalışma süreçlerini gerçek zamanlı odak analizi ile dönüştüren, yapay zekâ destekli bulut tabanlı bir web uygulamasıdır. Amacımız, öğrencilerin sadece ne çalıştığını değil, nasıl çalıştığını anlayarak, öğrenme verimliliğini en üst düzeye çıkarmaktır.
 
