@@ -6,7 +6,7 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-// Her oturum açıldığında (Google + normal şifre) kullanicilar tablosuna kaydet
+// Her oturum açıldığında (Google + normal şifre + magic link) kullanicilar tablosuna kaydet
 supabase.auth.onAuthStateChange(async (event, session) => {
   console.log("[AuthStateChange] event:", event, "user:", session?.user?.id)
 
@@ -31,19 +31,19 @@ supabase.auth.onAuthStateChange(async (event, session) => {
     return
   }
 
-  // 2) Yoksa ekle
+  // 2) Yeni kayıt ekle — SADECE auth_user_id + eposta
   const { error: insertError } = await supabase.from("kullanicilar").insert({
     auth_user_id: user.id,
-    ad_soyad: (user.user_metadata as any)?.full_name ?? "",
     eposta: user.email,
+    // ad_soyad alanın varsa ve NULL kabul ediyorsa hiç göndermememiz yeterli.
+    // NOT NULL ise, buraya ad_soyad: "" koyabilirsin.
   })
 
   if (insertError) {
     console.error("[kullanicilar INSERT error]", insertError)
   } else {
-    console.log("[kullanicilar] yeni kullanıcı eklendi ✅")
+    console.log("[kullanicilar] yeni kullanıcı eklendi ✅", {
+      eposta: user.email,
+    })
   }
-  console.log("SUPABASE_URL:", supabaseUrl)
-console.log("SUPABASE_ANON_KEY startsWith:", supabaseAnonKey?.slice(0, 8))
-
 })
