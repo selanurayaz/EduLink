@@ -4,6 +4,7 @@ import { supabase } from "../lib/supabaseClient"
 
 type Mode = "signin" | "signup"
 type EyeState = "forward" | "down" | "closed"
+type SigninMethod = "magic" | "password"
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -83,6 +84,7 @@ function generateStrongPassword(length = 14): string {
 
 export function LoginPage() {
   const [mode, setMode] = useState<Mode>("signin")
+  const [signinMethod, setSigninMethod] = useState<SigninMethod>("magic")
 
   // Sign in state
   const [signinEmail, setSigninEmail] = useState("")
@@ -95,12 +97,20 @@ export function LoginPage() {
   const [signupPassword, setSignupPassword] = useState("")
   const [showSignupPassword, setShowSignupPassword] = useState(true)
 
+  // "Şifreni mi unuttun" state (sadece password modunda)
+  const [showForgot, setShowForgot] = useState(false)
+  const [forgotEmail, setForgotEmail] = useState("")
+
   // Validasyon state
   const [signinEmailError, setSigninEmailError] = useState<string | null>(null)
-  const [signinPasswordError, setSigninPasswordError] = useState<string | null>(null)
+  const [signinPasswordError, setSigninPasswordError] = useState<string | null>(
+    null
+  )
   const [signupNameError, setSignupNameError] = useState<string | null>(null)
   const [signupEmailError, setSignupEmailError] = useState<string | null>(null)
-  const [signupPasswordError, setSignupPasswordError] = useState<string | null>(null)
+  const [signupPasswordError, setSignupPasswordError] = useState<string | null>(
+    null
+  )
 
   // Ortak state
   const [loading, setLoading] = useState(false)
@@ -110,14 +120,25 @@ export function LoginPage() {
   const isSignup = mode === "signup"
 
   // Maymunun bakacağı aktif şifre alanı
-  const activePassword = isSignup ? signupPassword : signinPassword
-  const activeVisible = isSignup ? showSignupPassword : showSigninPassword
+  const activePassword =
+    mode === "signin" && signinMethod === "password"
+      ? signinPassword
+      : isSignup
+      ? signupPassword
+      : ""
+  const activeVisible =
+    mode === "signin" && signinMethod === "password"
+      ? showSigninPassword
+      : isSignup
+      ? showSignupPassword
+      : true
 
   let eyeState: EyeState = "forward"
   if (!activePassword) eyeState = "forward"
   else if (!activeVisible) eyeState = "closed"
   else eyeState = "down"
 
+  // Sabit tema (dark)
   const containerBg = "bg-slate-950"
   const textMain = "text-slate-100"
   const cardBg = "bg-slate-900/70"
@@ -140,6 +161,7 @@ export function LoginPage() {
 
   const showSuccess = (message: string) => {
     setSuccess(message)
+    setError(null)
     setTimeout(() => {
       setSuccess(null)
     }, 15000)
@@ -148,17 +170,19 @@ export function LoginPage() {
   const goSignup = () => {
     resetMessages()
     resetFieldErrors()
+    setShowForgot(false)
     setMode("signup")
   }
 
   const goSignin = () => {
     resetMessages()
     resetFieldErrors()
+    setShowForgot(false)
     setMode("signin")
   }
 
-  // 🔑 GİRİŞ
-  const handleSignin = async () => {
+  // 🔑 ŞİFRELİ GİRİŞ
+  const handlePasswordSignin = async () => {
     resetMessages()
     resetFieldErrors()
 
@@ -168,7 +192,7 @@ export function LoginPage() {
       setSigninEmailError("E-posta adresi boş olamaz.")
       hasError = true
     } else if (!emailRegex.test(signinEmail)) {
-      setSigninEmailError("Lütfen geçerli bir e-posta adresi giriniz.")
+      setSigninEmailError("Lütfen geçerli bir e-posta adresi gir.")
       hasError = true
     }
 
@@ -185,46 +209,138 @@ export function LoginPage() {
         email: signinEmail,
         password: signinPassword,
       })
+
       if (error) throw error
+
       console.log("Giriş başarılı:", data)
-      showSuccess("Giriş başarılı! Birazdan çalışma alanına yönlendirileceksin.")
+      showSuccess("Hoş geldin! Birazdan çalışma alanına yönlendirileceksin.")
     } catch (err: any) {
       console.error(err)
-      setError("Giriş yapılamadı. E-posta veya şifreyi kontrol et.")
+
+      const msg = (err?.message || "").toLowerCase()
+
+      if (msg.includes("email not confirmed") || msg.includes("confirm")) {
+        setError(
+          "E-posta adresini henüz doğrulamamışsın. Mail kutunu kontrol edip doğrulama bağlantısına tıklaman gerekiyor."
+        )
+      } else if (msg.includes("invalid login") || msg.includes("invalid email")) {
+        setError("E-posta veya şifre hatalı. Lütfen tekrar dene.")
+      } else {
+        setError("Giriş yapılamadı. Bilgilerini kontrol edip tekrar dene.")
+      }
     } finally {
       setLoading(false)
     }
   }
 
-  // 🔑 Google ile devam (hem giriş hem kayıt için)
-  const handleGoogleContinue = async () => {
+// ⚡ MAGIC LINK GİRİŞ — sadece kayıtlı kullanıcıya mail gönder
+const handleMagicSignin = async () => {
   resetMessages()
   resetFieldErrors()
+
+  const email = signinEmail.trim().toLowerCase()
+
+  // 1) ÖNCE FORMAT KONTROLÜ — Supabase'e hiç gitme
+  if (!email) {
+    setSigninEmailError("E-posta adresi boş olamaz.")
+    return
+  }
+
+  if (!emailRegex.test(email)) {
+    setSigninEmailError("Lütfen geçerli bir e-posta adresi gir.")
+    return
+  }
+
   setLoading(true)
+
   try {
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
+    console.log("[magic] signInWithOtp çağrılıyor:", email)
+
+    const { data, error } = await supabase.auth.signInWithOtp({
+      email,
       options: {
-        redirectTo: window.location.origin + "/dashboard",
-        queryParams: {
-          prompt: "select_account", // 🔥 her seferinde hesap seçtir
-        },
+        // 🔑 Kullanıcı yoksa yeni user oluşturma
+        shouldCreateUser: false,
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
     })
-    if (error) throw error
-    console.log("Google ile yönlendirme:", data)
+
+    console.log("[magic] signInWithOtp cevabı:", { data, error })
+
+    if (error) {
+      const msg = (error.message || "").toLowerCase()
+      console.log("[magic] hata mesajı:", msg)
+
+      // Kullanıcı bulunamadı / OTP signup’a izin yok vs. → hepsini "hesap yok" sayıyoruz
+      if (
+        msg.includes("user not found") ||
+        (msg.includes("user") && msg.includes("not") && msg.includes("found")) ||
+        msg.includes("invalid login credentials") ||
+        msg.includes("signups not allowed for otp") ||
+        msg.includes("signup not allowed")
+      ) {
+        setError("Bu e-posta adresiyle kayıtlı bir hesap bulamadık.")
+      } else {
+        // Diğer bütün hatalar: genel hata
+        setError(
+          "Giriş bağlantısı gönderilirken bir sorun oluştu. Biraz sonra tekrar dene."
+        )
+        console.error("[magic] signInWithOtp error:", error)
+      }
+
+      return
+    }
+
+    // ✅ Başarılı durum
     showSuccess(
-      mode === "signin"
-        ? "Google ile giriş yapmak için yönlendiriliyorsun..."
-        : "Google ile hesabın oluşturulup giriş yapman için yönlendiriliyorsun..."
+      "Giriş bağlantısını e-posta adresine gönderdik. Mail kutunu ve spam klasörünü kontrol etmeyi unutma."
     )
-  } catch (err: any) {
-    console.error(err)
-    setError("Google ile devam ederken bir sorun oluştu. Lütfen tekrar dene.")
+  } catch (err) {
+    console.error("[magic] catch error:", err)
+    setError(
+      "Giriş bağlantısı gönderilirken bir hata oluştu. Biraz sonra tekrar dene."
+    )
+  } finally {
     setLoading(false)
   }
 }
 
+
+
+
+
+  // 🔑 Google ile devam
+  const handleGoogleContinue = async () => {
+    resetMessages()
+    resetFieldErrors()
+    setShowForgot(false)
+    setLoading(true)
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: window.location.origin + "/auth/callback",
+          queryParams: {
+            prompt: "select_account",
+          },
+        },
+      })
+      console.log("Google OAuth:", { data, error })
+      if (error) throw error
+
+      showSuccess(
+        mode === "signin"
+          ? "Google ile giriş yapman için yönlendiriliyorsun..."
+          : "Google ile hesabın oluşturulup giriş yapman için yönlendiriliyorsun..."
+      )
+    } catch (err: any) {
+      console.error(err)
+      setError(
+        "Google ile devam ederken bir sorun oluştu. Birkaç saniye sonra tekrar dene."
+      )
+      setLoading(false)
+    }
+  }
 
   // 🆕 KAYIT
   const handleSignup = async () => {
@@ -242,7 +358,7 @@ export function LoginPage() {
       setSignupEmailError("E-posta adresi boş olamaz.")
       hasError = true
     } else if (!emailRegex.test(signupEmail)) {
-      setSignupEmailError("Lütfen geçerli bir e-posta adresi giriniz.")
+      setSignupEmailError("Lütfen geçerli bir e-posta adresi gir.")
       hasError = true
     }
 
@@ -258,29 +374,114 @@ export function LoginPage() {
       const { data, error } = await supabase.auth.signUp({
         email: signupEmail,
         password: signupPassword,
+        options: {
+          data: { full_name: signupName }, // ad_soyad metadata
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
       })
+
+      console.log("signUp yanıt:", { data, error })
       if (error) throw error
-      if (data.user) {
-        const { error: insertError } = await supabase
-          .from("kullanicilar")
-          .insert({
-            ad_soyad: signupName,
-            eposta: signupEmail,
-            auth_user_id: data.user.id,
-          })
-        if (insertError) throw insertError
-      }
-      console.log("Kayıt başarılı:", data)
+
       showSuccess(
-        "Kayıt başarılı! Eğer mail doğrulaması gerekiyorsa, lütfen e-posta kutunu kontrol et."
+        "Hesabını oluşturduk! E-posta adresine doğrulama bağlantısı gönderdik. Mail kutunu (ve gerekirse spam klasörünü) kontrol etmeyi unutma."
       )
     } catch (err: any) {
       console.error(err)
-      setError("Kayıt sırasında bir hata oluştu. Lütfen bilgilerini kontrol et.")
+
+      const msg = (err?.message || "").toLowerCase()
+
+      if (msg.includes("already registered") || msg.includes("already exists")) {
+        setError(
+          "Bu e-posta adresiyle zaten bir hesabın var. Giriş yapmayı denersen kaldığın yerden devam edebilirsin."
+        )
+        // Kullanıcıyı nazikçe giriş moduna taşı
+        setMode("signin")
+        setSigninEmail(signupEmail)
+        setSigninMethod("magic")
+      } else {
+        setError(
+          "Kayıt sırasında bir sorun oluştu. Bilgilerini kontrol edip tekrar dene."
+        )
+      }
     } finally {
       setLoading(false)
     }
   }
+
+  // 🔁 ŞİFRENİ Mİ UNUTTUN? (reset + önce veritabanı kontrolü)
+  // 🔁 ŞİFRENİ Mİ UNUTTUN?  (reset + önce veritabanı kontrolü)
+const handleSendReset = async () => {
+  resetMessages()
+
+  // Eğer kullanıcı "Şifreni mi unuttun" popup'ına yazdıysa onu,
+  // yazmadıysa giriş e-postasını kullan.
+  const email = (forgotEmail || signinEmail).trim().toLowerCase()
+
+  // 1) Önce format kontrolü
+  if (!email) {
+    setError("Şifre sıfırlama bağlantısı göndermek için e-posta adresi yazmalısın.")
+    return
+  }
+
+  if (!emailRegex.test(email)) {
+    setError("Lütfen geçerli bir e-posta adresi gir.")
+    return
+  }
+
+  setLoading(true)
+
+  try {
+    console.log("[reset] DB kontrol başlıyor:", email)
+
+    // 2) KULLANICILAR TABLOSUNDA VAR MI?
+    const { data: row, error: selectError } = await supabase
+      .from("kullanicilar")
+      .select("id")
+      .eq("eposta", email)
+      .maybeSingle()
+
+    console.log("[reset] DB sonucu:", { row, selectError })
+
+    if (selectError) {
+      console.error("[reset] SELECT ERROR:", selectError)
+      setError("Bir hata oluştu. Biraz sonra tekrar dene.")
+      return
+    }
+
+    if (!row) {
+      setError("Bu e-posta adresiyle kayıtlı bir hesap bulamadık.")
+      return
+    }
+
+    // 3) KULLANICI VARSA → ŞİFRE SIFIRLAMA MAILİ GÖNDER
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    })
+
+    if (error) {
+      console.error("[reset] resetPasswordForEmail ERROR:", error)
+      setError(
+        "Şifre sıfırlama bağlantısı gönderilirken bir hata oluştu. Biraz sonra tekrar dene."
+      )
+      return
+    }
+
+    setShowForgot(false)
+    setForgotEmail("")
+    showSuccess(
+      "Şifre sıfırlama bağlantısını e-posta adresine gönderdik. Mail kutunu ve spam klasörünü kontrol etmeyi unutma."
+    )
+  } catch (err) {
+    console.error("[reset] CATCH ERROR:", err)
+    setError(
+      "Şifre sıfırlama bağlantısı gönderilirken bir hata oluştu. Biraz sonra tekrar dene."
+    )
+  } finally {
+    setLoading(false)
+  }
+}
+
 
   const signupPasswordStrength = getPasswordStrength(signupPassword)
   const strengthLabel =
@@ -317,23 +518,33 @@ export function LoginPage() {
     >
       <div className="w-full max-w-5xl">
         {/* Logo */}
-        <div className="flex items-center gap-2 mb-6">
-          <div className="h-9 w-9 rounded-2xl bg-emerald-500/10 border border-emerald-500/60 flex items-center justify-center">
-            <div className="h-4 w-4 rounded-full border-2 border-emerald-400 relative">
-              <span className="absolute -right-1 -bottom-1 h-3 w-3 rounded-full border-2 border-emerald-400 bg-slate-950" />
+        <div className="flex items-center justify-between gap-2 mb-6">
+          <div className="flex items-center gap-2">
+            <div className="h-9 w-9 rounded-2xl bg-emerald-500/10 border border-emerald-500/60 flex items-center justify-center">
+              <div className="h-4 w-4 rounded-full border-2 border-emerald-400 relative">
+                <span className="absolute -right-1 -bottom-1 h-3 w-3 rounded-full border-2 border-emerald-400 bg-slate-950" />
+              </div>
             </div>
+            <span className="text-xl font-semibold tracking-tight font-display">
+              <span>Edu</span>
+              <span className="text-emerald-400">Link</span>
+            </span>
           </div>
-          <span className="text-xl font-semibold tracking-tight font-display">
-            <span>Edu</span>
-            <span className="text-emerald-400">Link</span>
-          </span>
         </div>
 
         {/* Hata / başarı mesajı */}
         {(error || success) && (
-          <div className="mb-4 text-sm">
-            {error && <p className="text-red-400">{error}</p>}
-            {success && <p className="text-emerald-400">{success}</p>}
+          <div className="mb-4 text-sm space-y-2">
+            {error && (
+              <div className="rounded-xl border border-red-500/40 bg-red-500/5 px-3 py-2 text-red-300">
+                {error}
+              </div>
+            )}
+            {success && (
+              <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/5 px-3 py-2 text-emerald-300">
+                {success}
+              </div>
+            )}
           </div>
         )}
 
@@ -342,7 +553,7 @@ export function LoginPage() {
           {/* METİN KARTI */}
           <motion.div
             layout
-            style={{ order: isSignup ? 2 : 1 }} // signin -> sol, signup -> sağ
+            style={{ order: isSignup ? 2 : 1 }}
             transition={{ type: "spring", stiffness: 260, damping: 24 }}
             className={`flex-1 rounded-3xl border ${cardBorder} ${cardBg} p-6 flex flex-col justify-between`}
           >
@@ -350,11 +561,11 @@ export function LoginPage() {
               <>
                 <div>
                   <h2 className="text-xl font-display font-semibold mb-2">
-                    EduLink’e ilk kez mi geliyorsun?
+                    Şifresiz ve hızlı giriş
                   </h2>
                   <p className="text-sm text-slate-300">
-                    Hedeflerini, ders programını ve odak süreni takip etmek için
-                    birkaç adımda ücretsiz hesap oluştur.
+                    E-posta adresine gönderilen tek kullanımlık bağlantıyla
+                    EduLink’e güvenli ve hızlı şekilde giriş yap.
                   </p>
                 </div>
                 <button
@@ -389,7 +600,7 @@ export function LoginPage() {
           {/* MAYMUNLU FORM KARTI */}
           <motion.div
             layout
-            style={{ order: isSignup ? 1 : 2 }} // signin -> sağ, signup -> sol
+            style={{ order: isSignup ? 1 : 2 }}
             transition={{ type: "spring", stiffness: 260, damping: 24 }}
             className={`flex-1 rounded-3xl border ${cardBorder} ${cardBg} p-6`}
           >
@@ -402,6 +613,37 @@ export function LoginPage() {
                 <h2 className="text-xl font-display font-semibold mb-4 text-center">
                   Giriş yap
                 </h2>
+
+                {/* Giriş yöntemi toggle */}
+                <div className="flex items-center justify-center gap-2 mb-4 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSigninMethod("magic")
+                      setShowForgot(false)
+                    }}
+                    className={`px-3 py-1 rounded-full border ${
+                      signinMethod === "magic"
+                        ? "border-emerald-400 bg-emerald-500/10 text-emerald-200"
+                        : "border-slate-600 text-slate-300"
+                    }`}
+                  >
+                    Hızlı giriş (Mail linki)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSigninMethod("password")
+                    }}
+                    className={`px-3 py-1 rounded-full border ${
+                      signinMethod === "password"
+                        ? "border-emerald-400 bg-emerald-500/10 text-emerald-200"
+                        : "border-slate-600 text-slate-300"
+                    }`}
+                  >
+                    Şifre ile giriş yap
+                  </button>
+                </div>
 
                 <div className="space-y-4">
                   {/* E-posta */}
@@ -430,61 +672,115 @@ export function LoginPage() {
                     )}
                   </div>
 
-                  {/* Şifre */}
-                  <div className="space-y-2">
-                    <label className="text-xs text-slate-400 font-medium">
-                      Şifre
-                    </label>
-                    <div
-                      className={`flex items-center rounded-xl border px-3 ${
-                        signinPasswordError
-                          ? "border-red-500 focus-within:ring-2 focus-within:ring-red-500"
-                          : `${inputBorder} focus-within:ring-2 focus-within:ring-emerald-500/70`
-                      } ${inputBg}`}
-                    >
-                      <input
-                        type={showSigninPassword ? "text" : "password"}
-                        className="w-full bg-transparent py-2 text-sm outline-none"
-                        placeholder="••••••••"
-                        value={signinPassword}
-                        onChange={(e) => {
-                          setSigninPassword(e.target.value)
-                          if (signinPasswordError) setSigninPasswordError(null)
-                        }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setShowSigninPassword((prev) => !prev)
-                        }
-                        className="ml-2 text-xs text-slate-400 hover:text-emerald-400 transition"
+                  {/* Şifre alanı sadece password modunda */}
+                  {signinMethod === "password" && (
+                    <div className="space-y-2">
+                      <label className="text-xs text-slate-400 font-medium">
+                        Şifre
+                      </label>
+                      <div
+                        className={`flex items-center rounded-xl border px-3 ${
+                          signinPasswordError
+                            ? "border-red-500 focus-within:ring-2 focus-within:ring-red-500"
+                            : `${inputBorder} focus-within:ring-2 focus-within:ring-emerald-500/70`
+                        } ${inputBg}`}
                       >
-                        {showSigninPassword ? "👁️" : "🙈"}
-                      </button>
+                        <input
+                          type={showSigninPassword ? "text" : "password"}
+                          className="w-full bg-transparent py-2 text-sm outline-none"
+                          placeholder="••••••••"
+                          value={signinPassword}
+                          onChange={(e) => {
+                            setSigninPassword(e.target.value)
+                            if (signinPasswordError)
+                              setSigninPasswordError(null)
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setShowSigninPassword((prev) => !prev)
+                          }
+                          className="ml-2 text-xs text-slate-400 hover:text-emerald-400 transition"
+                        >
+                          {showSigninPassword ? "👁️" : "🙈"}
+                        </button>
+                      </div>
+                      {signinPasswordError && (
+                        <p className="text-[11px] text-red-400">
+                          {signinPasswordError}
+                        </p>
+                      )}
                     </div>
-                    {signinPasswordError && (
-                      <p className="text-[11px] text-red-400">
-                        {signinPasswordError}
-                      </p>
-                    )}
-                  </div>
+                  )}
                 </div>
 
+                {/* ŞİFRENİ Mİ UNUTTUN?  (password modunda, giriş butonunun ÜSTÜNDE) */}
+                {signinMethod === "password" && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowForgot((prev) => !prev)
+                        setForgotEmail(signinEmail)
+                      }}
+                      className="mt-4 text-xs text-emerald-300 hover:underline"
+                    >
+                      Şifreni mi unuttun?
+                    </button>
+
+                    {showForgot && (
+                      <div className="mt-2 rounded-xl border border-slate-700 bg-slate-900/80 px-3 py-3 space-y-3">
+                        <p className="text-xs text-slate-300">
+                          Şifre sıfırlama bağlantısını e-posta adresine
+                          gönderelim.
+                        </p>
+                        <input
+                          type="email"
+                          className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-500/70"
+                          placeholder="E-posta adresin"
+                          value={forgotEmail || signinEmail}
+                          onChange={(e) => setForgotEmail(e.target.value)}
+                        />
+                        <button
+                          type="button"
+                          onClick={handleSendReset}
+                          disabled={loading}
+                          className="w-full rounded-lg bg-slate-100 text-slate-900 text-xs font-semibold py-2 hover:bg-white disabled:opacity-60 transition"
+                        >
+                          Şifre sıfırlama bağlantısı gönder
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* GİRİŞ BUTONU */}
                 <button
                   type="button"
-                  onClick={handleSignin}
+                  onClick={
+                    signinMethod === "magic"
+                      ? handleMagicSignin
+                      : handlePasswordSignin
+                  }
                   disabled={loading}
-                  className="mt-6 w-full rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-60 text-slate-950 text-sm font-semibold py-2.5 transition shadow-md shadow-emerald-500/30"
+                  className="mt-4 w-full rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-60 text-slate-950 text-sm font-semibold py-2.5 transition shadow-md shadow-emerald-500/30"
                 >
-                  {loading && !isSignup ? "Giriş yapılıyor..." : "Giriş Yap"}
+                  {loading
+                    ? signinMethod === "magic"
+                      ? "Bağlantı gönderiliyor..."
+                      : "Giriş yapılıyor..."
+                    : signinMethod === "magic"
+                    ? "Giriş bağlantısı gönder"
+                    : "Giriş Yap"}
                 </button>
 
-                {/* Google ile devam butonu – daha soluk */}
+                {/* Google ile giriş */}
                 <button
                   type="button"
                   onClick={handleGoogleContinue}
                   disabled={loading}
-                  className="mt-3 w-full rounded-xl border border-slate-700/60 bg-slate-900/40 text-slate-100/80 text-sm font-semibold py-2.5 shadow-none hover:bg-slate-900/70 hover:border-emerald-400/60 disabled:opacity-40 transition flex items-center justify-center gap-2"
+                  className="mt-4 w-full rounded-xl border border-slate-700/60 bg-slate-900/40 text-slate-100/80 text-sm font-semibold py-2.5 shadow-none hover:bg-slate-900/70 hover:border-emerald-400/60 disabled:opacity-40 transition flex items-center justify-center gap-2"
                 >
                   <span className="inline-flex items-center justify-center h-5 w-5 rounded-sm overflow-hidden opacity-70">
                     <svg viewBox="0 0 48 48" className="h-5 w-5">
@@ -510,6 +806,7 @@ export function LoginPage() {
                 </button>
               </>
             ) : (
+              /* KAYIT KARTI */
               <>
                 <h2 className="text-xl font-display font-semibold mb-4 text-center">
                   Kayıt ol
@@ -590,7 +887,8 @@ export function LoginPage() {
                         value={signupPassword}
                         onChange={(e) => {
                           setSignupPassword(e.target.value)
-                          if (signupPasswordError) setSignupPasswordError(null)
+                          if (signupPasswordError)
+                            setSignupPasswordError(null)
                         }}
                       />
                       <button
@@ -609,7 +907,6 @@ export function LoginPage() {
                       </p>
                     )}
 
-                    {/* Şifre gücü göstergesi */}
                     {signupPassword && (
                       <div className="mt-2 space-y-1">
                         <div className="h-1 w-full bg-slate-800 rounded-full overflow-hidden">
@@ -624,7 +921,6 @@ export function LoginPage() {
                       </div>
                     )}
 
-                    {/* Şifre oluştur butonu */}
                     <button
                       type="button"
                       onClick={() => {
@@ -647,10 +943,9 @@ export function LoginPage() {
                   disabled={loading}
                   className="mt-6 w-full rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-60 text-slate-950 text-sm font-semibold py-2.5 transition shadow-md shadow-emerald-500/30"
                 >
-                  {loading && isSignup ? "Kayıt yapılıyor..." : "Öğrenmeye Başla"}
+                  {loading ? "Kayıt yapılıyor..." : "Öğrenmeye Başla"}
                 </button>
 
-                {/* Kayıtta Google ile kaydol – daha soluk */}
                 <button
                   type="button"
                   onClick={handleGoogleContinue}

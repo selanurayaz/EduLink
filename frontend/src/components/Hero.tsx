@@ -5,7 +5,7 @@ const phrases = [
   "Hedeflerine odaklan.",
   "Günlük çalışma planını oluştur.",
   "Odak süreni takip et.",
-  "Kendini geliştir. Her gün.",
+  "Kendini geliştir.",
   "Başarı bir alışkanlıktır.",
 ]
 
