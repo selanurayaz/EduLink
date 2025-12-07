@@ -6,6 +6,7 @@ import { AuthCallbackPage } from "./pages/AuthCallback"
 import { HomePage } from "./pages/HomePage"
 import { ProtectedRoute } from "./components/ProtectedRoute"
 import { useState } from "react"
+import { AuthProvider } from "./context/AuthProvider"
 
 function AuthFlow() {
   const [screen, setScreen] = useState<"hero" | "login">("hero")
@@ -17,13 +18,17 @@ function AuthFlow() {
   )
 }
 
-export default function App() {
+function App() {
   return (
+  <AuthProvider>
     <BrowserRouter>
       <Routes>
-        {/* 🔒 Ana sayfa = sadece login olan kullanıcı */}
+        {/* 👉 Artık root (/) = Auth akışı */}
+        <Route path="/" element={<AuthFlow />} />
+
+        {/* 👉 Korunan ana sayfa artık /home */}
         <Route
-          path="/"
+          path="/home"
           element={
             <ProtectedRoute>
               <HomePage />
@@ -31,11 +36,13 @@ export default function App() {
           }
         />
 
-        {/* Auth ekranları */}
-        <Route path="/auth" element={<AuthFlow />} />
+        {/* Auth callback + şifre sıfırlama */}
         <Route path="/auth/callback" element={<AuthCallbackPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
       </Routes>
     </BrowserRouter>
+    </AuthProvider>
   )
 }
+
+export default App

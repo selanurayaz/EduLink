@@ -1,6 +1,7 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { supabase } from "../lib/supabaseClient"
+import { useNavigate } from "react-router-dom"
 
 type Mode = "signin" | "signup"
 type EyeState = "forward" | "down" | "closed"
@@ -83,8 +84,39 @@ function generateStrongPassword(length = 14): string {
 }
 
 export function LoginPage() {
+  const navigate = useNavigate()
   const [mode, setMode] = useState<Mode>("signin")
   const [signinMethod, setSigninMethod] = useState<SigninMethod>("magic")
+
+  // 🔁 MULTI-TAB / MEVCUT SESSION KONTROLÜ
+  useEffect(() => {
+    let isMounted = true
+
+    // 1) İlk açılışta mevcut session var mı?
+    supabase.auth.getSession().then(({ data }) => {
+      if (!isMounted) return
+      if (data?.session) {
+        console.log("[LoginPage] mevcut session bulundu, /home'a yönlendiriliyor")
+        navigate("/home", { replace: true })
+      }
+    })
+
+    // 2) Herhangi bir sekmede login olursa bu sekme de /home'a gitsin
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        if (!isMounted) return
+        if (session) {
+          console.log("[LoginPage] onAuthStateChange → session VAR, /home")
+          navigate("/home", { replace: true })
+        }
+      }
+    )
+
+    return () => {
+      isMounted = false
+      listener.subscription.unsubscribe()
+    }
+  }, [navigate])
 
   // Sign in state
   const [signinEmail, setSigninEmail] = useState("")
@@ -213,7 +245,9 @@ export function LoginPage() {
       if (error) throw error
 
       console.log("Giriş başarılı:", data)
-      showSuccess("Hoş geldin! Birazdan çalışma alanına yönlendirileceksin.")
+      showSuccess("Hoş geldin! Ana sayfaya yönlendiriliyorsun...")
+
+      navigate("/home")
     } catch (err: any) {
       console.error(err)
 
@@ -233,81 +267,72 @@ export function LoginPage() {
     }
   }
 
-// ⚡ MAGIC LINK GİRİŞ — sadece kayıtlı kullanıcıya mail gönder
-const handleMagicSignin = async () => {
-  resetMessages()
-  resetFieldErrors()
+  // ⚡ MAGIC LINK GİRİŞ — sadece kayıtlı kullanıcıya mail gönder
+  const handleMagicSignin = async () => {
+    resetMessages()
+    resetFieldErrors()
 
-  const email = signinEmail.trim().toLowerCase()
+    const email = signinEmail.trim().toLowerCase()
 
-  // 1) ÖNCE FORMAT KONTROLÜ — Supabase'e hiç gitme
-  if (!email) {
-    setSigninEmailError("E-posta adresi boş olamaz.")
-    return
-  }
-
-  if (!emailRegex.test(email)) {
-    setSigninEmailError("Lütfen geçerli bir e-posta adresi gir.")
-    return
-  }
-
-  setLoading(true)
-
-  try {
-    console.log("[magic] signInWithOtp çağrılıyor:", email)
-
-    const { data, error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        // 🔑 Kullanıcı yoksa yeni user oluşturma
-        shouldCreateUser: false,
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
-    })
-
-    console.log("[magic] signInWithOtp cevabı:", { data, error })
-
-    if (error) {
-      const msg = (error.message || "").toLowerCase()
-      console.log("[magic] hata mesajı:", msg)
-
-      // Kullanıcı bulunamadı / OTP signup’a izin yok vs. → hepsini "hesap yok" sayıyoruz
-      if (
-        msg.includes("user not found") ||
-        (msg.includes("user") && msg.includes("not") && msg.includes("found")) ||
-        msg.includes("invalid login credentials") ||
-        msg.includes("signups not allowed for otp") ||
-        msg.includes("signup not allowed")
-      ) {
-        setError("Bu e-posta adresiyle kayıtlı bir hesap bulamadık.")
-      } else {
-        // Diğer bütün hatalar: genel hata
-        setError(
-          "Giriş bağlantısı gönderilirken bir sorun oluştu. Biraz sonra tekrar dene."
-        )
-        console.error("[magic] signInWithOtp error:", error)
-      }
-
+    if (!email) {
+      setSigninEmailError("E-posta adresi boş olamaz.")
       return
     }
 
-    // ✅ Başarılı durum
-    showSuccess(
-      "Giriş bağlantısını e-posta adresine gönderdik. Mail kutunu ve spam klasörünü kontrol etmeyi unutma."
-    )
-  } catch (err) {
-    console.error("[magic] catch error:", err)
-    setError(
-      "Giriş bağlantısı gönderilirken bir hata oluştu. Biraz sonra tekrar dene."
-    )
-  } finally {
-    setLoading(false)
+    if (!emailRegex.test(email)) {
+      setSigninEmailError("Lütfen geçerli bir e-posta adresi gir.")
+      return
+    }
+
+    setLoading(true)
+
+    try {
+      console.log("[magic] signInWithOtp çağrılıyor:", email)
+
+      const { data, error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          shouldCreateUser: false,
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      })
+
+      console.log("[magic] signInWithOtp cevabı:", { data, error })
+
+      if (error) {
+        const msg = (error.message || "").toLowerCase()
+        console.log("[magic] hata mesajı:", msg)
+
+        if (
+          msg.includes("user not found") ||
+          (msg.includes("user") && msg.includes("not") && msg.includes("found")) ||
+          msg.includes("invalid login credentials") ||
+          msg.includes("signups not allowed for otp") ||
+          msg.includes("signup not allowed")
+        ) {
+          setError("Bu e-posta adresiyle kayıtlı bir hesap bulamadık.")
+        } else {
+          setError(
+            "Giriş bağlantısı gönderilirken bir sorun oluştu. Biraz sonra tekrar dene."
+          )
+          console.error("[magic] signInWithOtp error:", error)
+        }
+
+        return
+      }
+
+      showSuccess(
+        "Giriş bağlantısını e-posta adresine gönderdik. Mail kutunu ve spam klasörünü kontrol etmeyi unutma."
+      )
+    } catch (err) {
+      console.error("[magic] catch error:", err)
+      setError(
+        "Giriş bağlantısı gönderilirken bir hata oluştu. Biraz sonra tekrar dene."
+      )
+    } finally {
+      setLoading(false)
+    }
   }
-}
-
-
-
-
 
   // 🔑 Google ile devam
   const handleGoogleContinue = async () => {
@@ -375,7 +400,7 @@ const handleMagicSignin = async () => {
         email: signupEmail,
         password: signupPassword,
         options: {
-          data: { full_name: signupName }, // ad_soyad metadata
+          data: { full_name: signupName },
           emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
       })
@@ -395,7 +420,6 @@ const handleMagicSignin = async () => {
         setError(
           "Bu e-posta adresiyle zaten bir hesabın var. Giriş yapmayı denersen kaldığın yerden devam edebilirsin."
         )
-        // Kullanıcıyı nazikçe giriş moduna taşı
         setMode("signin")
         setSigninEmail(signupEmail)
         setSigninMethod("magic")
@@ -409,79 +433,72 @@ const handleMagicSignin = async () => {
     }
   }
 
-  // 🔁 ŞİFRENİ Mİ UNUTTUN? (reset + önce veritabanı kontrolü)
-  // 🔁 ŞİFRENİ Mİ UNUTTUN?  (reset + önce veritabanı kontrolü)
-const handleSendReset = async () => {
-  resetMessages()
+  // 🔁 ŞİFRENİ Mİ UNUTTUN?
+  const handleSendReset = async () => {
+    resetMessages()
 
-  // Eğer kullanıcı "Şifreni mi unuttun" popup'ına yazdıysa onu,
-  // yazmadıysa giriş e-postasını kullan.
-  const email = (forgotEmail || signinEmail).trim().toLowerCase()
+    const email = (forgotEmail || signinEmail).trim().toLowerCase()
 
-  // 1) Önce format kontrolü
-  if (!email) {
-    setError("Şifre sıfırlama bağlantısı göndermek için e-posta adresi yazmalısın.")
-    return
-  }
-
-  if (!emailRegex.test(email)) {
-    setError("Lütfen geçerli bir e-posta adresi gir.")
-    return
-  }
-
-  setLoading(true)
-
-  try {
-    console.log("[reset] DB kontrol başlıyor:", email)
-
-    // 2) KULLANICILAR TABLOSUNDA VAR MI?
-    const { data: row, error: selectError } = await supabase
-      .from("kullanicilar")
-      .select("id")
-      .eq("eposta", email)
-      .maybeSingle()
-
-    console.log("[reset] DB sonucu:", { row, selectError })
-
-    if (selectError) {
-      console.error("[reset] SELECT ERROR:", selectError)
-      setError("Bir hata oluştu. Biraz sonra tekrar dene.")
+    if (!email) {
+      setError("Şifre sıfırlama bağlantısı göndermek için e-posta adresi yazmalısın.")
       return
     }
 
-    if (!row) {
-      setError("Bu e-posta adresiyle kayıtlı bir hesap bulamadık.")
+    if (!emailRegex.test(email)) {
+      setError("Lütfen geçerli bir e-posta adresi gir.")
       return
     }
 
-    // 3) KULLANICI VARSA → ŞİFRE SIFIRLAMA MAILİ GÖNDER
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    })
+    setLoading(true)
 
-    if (error) {
-      console.error("[reset] resetPasswordForEmail ERROR:", error)
+    try {
+      console.log("[reset] DB kontrol başlıyor:", email)
+
+      const { data: row, error: selectError } = await supabase
+        .from("kullanicilar")
+        .select("id")
+        .eq("eposta", email)
+        .maybeSingle()
+
+      console.log("[reset] DB sonucu:", { row, selectError })
+
+      if (selectError) {
+        console.error("[reset] SELECT ERROR:", selectError)
+        setError("Bir hata oluştu. Biraz sonra tekrar dene.")
+        return
+      }
+
+      if (!row) {
+        setError("Bu e-posta adresiyle kayıtlı bir hesap bulamadık.")
+        return
+      }
+
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      })
+
+      if (error) {
+        console.error("[reset] resetPasswordForEmail ERROR:", error)
+        setError(
+          "Şifre sıfırlama bağlantısı gönderilirken bir hata oluştu. Biraz sonra tekrar dene."
+        )
+        return
+      }
+
+      setShowForgot(false)
+      setForgotEmail("")
+      showSuccess(
+        "Şifre sıfırlama bağlantısını e-posta adresine gönderdik. Mail kutunu ve spam klasörünü kontrol etmeyi unutma."
+      )
+    } catch (err) {
+      console.error("[reset] CATCH ERROR:", err)
       setError(
         "Şifre sıfırlama bağlantısı gönderilirken bir hata oluştu. Biraz sonra tekrar dene."
       )
-      return
+    } finally {
+      setLoading(false)
     }
-
-    setShowForgot(false)
-    setForgotEmail("")
-    showSuccess(
-      "Şifre sıfırlama bağlantısını e-posta adresine gönderdik. Mail kutunu ve spam klasörünü kontrol etmeyi unutma."
-    )
-  } catch (err) {
-    console.error("[reset] CATCH ERROR:", err)
-    setError(
-      "Şifre sıfırlama bağlantısı gönderilirken bir hata oluştu. Biraz sonra tekrar dene."
-    )
-  } finally {
-    setLoading(false)
   }
-}
-
 
   const signupPasswordStrength = getPasswordStrength(signupPassword)
   const strengthLabel =
@@ -715,7 +732,7 @@ const handleSendReset = async () => {
                   )}
                 </div>
 
-                {/* ŞİFRENİ Mİ UNUTTUN?  (password modunda, giriş butonunun ÜSTÜNDE) */}
+                {/* ŞİFRENİ Mİ UNUTTUN? */}
                 {signinMethod === "password" && (
                   <>
                     <button
