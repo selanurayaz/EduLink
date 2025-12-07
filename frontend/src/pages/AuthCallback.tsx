@@ -8,42 +8,96 @@ export function AuthCallbackPage() {
   const navigate = useNavigate()
 
   useEffect(() => {
+    let isMounted = true
+    let finished = false
+
+    // ⏱ ZAMAN AŞIMI: 8 sn içinde iş bitmezse giriş sayfasına at
+    const timeoutId = window.setTimeout(() => {
+      if (!isMounted || finished) return
+
+      finished = true
+      setError("Giriş işlemi zaman aşımına uğradı. Lütfen tekrar dene.")
+      setInfo("")
+      navigate("/", { replace: true }) // 🔙 giriş sayfası
+    }, 8000)
+
     const run = async () => {
-      // URL'de Supabase'in döndürdüğü hata varsa önce onu yakalayalım
-      const params = new URLSearchParams(window.location.search)
-      const errorDesc = params.get("error_description")
+      try {
+        const params = new URLSearchParams(window.location.search)
+        const errorDesc = params.get("error_description")
 
-      if (errorDesc) {
+        // URL'de hata varsa
+        if (errorDesc) {
+          if (!isMounted) return
+          clearTimeout(timeoutId)
+          finished = true
+
+          setError(
+            "Bağlantı doğrulanırken bir hata oluştu: " +
+              decodeURIComponent(errorDesc)
+          )
+          setInfo("")
+
+          setTimeout(() => {
+            navigate("/", { replace: true }) // 🔙 giriş sayfası
+          }, 2000)
+          return
+        }
+
+        // Kullanıcı gerçekten oturum almış mı
+        const { data, error } = await supabase.auth.getUser()
+        console.log("[auth-callback] getUser:", { data, error })
+
+        if (!isMounted) return
+
+        if (error || !data?.user) {
+          clearTimeout(timeoutId)
+          finished = true
+
+          setError(
+            "Giriş bağlantısı geçersiz veya süresi dolmuş. Lütfen tekrar giriş yap."
+          )
+          setInfo("")
+
+          setTimeout(() => {
+            navigate("/", { replace: true }) // 🔙 giriş sayfası
+          }, 2000)
+          return
+        }
+
+        // ✅ Başarılı
+        clearTimeout(timeoutId)
+        finished = true
+
+        setInfo("Giriş başarılı! Ana sayfaya yönlendiriliyorsun...")
+        setError(null)
+
+        setTimeout(() => {
+          navigate("/home", { replace: true }) // 🏠 ana sayfa
+        }, 1500)
+      } catch (err) {
+        console.error("[auth-callback] run error:", err)
+        if (!isMounted) return
+        clearTimeout(timeoutId)
+        finished = true
+
         setError(
-          "Bağlantı doğrulanırken bir hata oluştu: " +
-            decodeURIComponent(errorDesc)
+          "Giriş sırasında beklenmeyen bir hata oluştu. Lütfen tekrar dene."
         )
         setInfo("")
-        return
+
+        setTimeout(() => {
+          navigate("/", { replace: true }) // 🔙 giriş sayfası
+        }, 2000)
       }
-
-      // Kullanıcı gerçekten oturum almış mı kontrol et
-      const { data, error } = await supabase.auth.getUser()
-      console.log("[auth-callback] getUser:", { data, error })
-
-      if (error || !data?.user) {
-        setError(
-          "Giriş bağlantısı geçersiz veya süresi dolmuş. Lütfen tekrar deneyip yeni bir bağlantı iste."
-        )
-        setInfo("")
-        return
-      }
-
-      // Başarılı
-      setInfo("Giriş başarılı! Ana sayfaya yönlendiriliyorsun...")
-      setError(null)
-
-      setTimeout(() => {
-        navigate("/") // Hero/Login akışına geri dön
-      }, 1500)
     }
 
     run()
+
+    return () => {
+      isMounted = false
+      clearTimeout(timeoutId)
+    }
   }, [navigate])
 
   return (

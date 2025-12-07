@@ -39,6 +39,7 @@ supabase.auth.onAuthStateChange(async (event, session) => {
     // NOT NULL ise, buraya ad_soyad: "" koyabilirsin.
   })
 
+
   if (insertError) {
     console.error("[kullanicilar INSERT error]", insertError)
   } else {
@@ -46,4 +47,18 @@ supabase.auth.onAuthStateChange(async (event, session) => {
       eposta: user.email,
     })
   }
+})
+
+// 🟢 Multi-Tab Session Sync — PROD STABLE SYSTEM
+// Tarayıcı sekmeleri arasında session senkronizasyonu için BroadcastChannel
+export const authChannel = new BroadcastChannel("supabase-auth-sync")
+
+supabase.auth.onAuthStateChange((event, session) => {
+  console.log("[Auth Sync] event:", event)
+
+  // Tüm sekmelere session değişikliğini yayınla
+  authChannel.postMessage({
+    event,
+    session,
+  })
 })
