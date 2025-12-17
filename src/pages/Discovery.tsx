@@ -221,8 +221,12 @@ const Discovery = () => {
                                 </div>
                             </div>
                             <p className="text-sm text-slate-500 mb-4">Kısa testlerle öğrendiklerini pekiştir.</p>
+<<<<<<< HEAD
                             <button
                                 className="w-full bg-amber-50 text-amber-700 font-bold py-2.5 rounded-xl hover:bg-amber-100 transition-colors">
+=======
+                            <button className="w-full bg-amber-50 text-amber-700 font-bold py-2.5 rounded-xl hover:bg-amber-100 transition-colors">
+>>>>>>> 962b2d052ac79bf0d2ff07babe0ad5b0cff98311
                                 Quize Başla
                             </button>
                         </div>
