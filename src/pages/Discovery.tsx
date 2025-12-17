@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import {
     ArrowLeft, BookOpen, PlayCircle, Headphones, Star,
-    Clock, Heart, Compass
+    Clock, Heart, Compass, HelpCircle
 } from 'lucide-react';
 
 // ArrowRight listeden çıkarıldı, artık hata vermeyecek.
@@ -26,7 +26,7 @@ const Discovery = () => {
                         onClick={() => navigate('/dashboard')}
                         className="p-3 bg-white hover:bg-slate-100 text-slate-600 rounded-xl shadow-sm border border-slate-200 transition-all group"
                     >
-                        <ArrowLeft size={24} className="group-hover:-translate-x-1 transition-transform"/>
+                        <ArrowLeft size={24} className="group-hover:-translate-x-1 transition-transform" />
                     </button>
                     <div>
                         <h1 className="text-3xl font-black text-slate-900">Keşfet & Öğren 🚀</h1>
@@ -39,23 +39,26 @@ const Discovery = () => {
                     <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-white/10 rounded-full blur-3xl -mr-20 -mt-20 group-hover:bg-white/20 transition-colors"></div>
 
                     <div className="relative z-10 max-w-2xl">
-                <span className="inline-block px-3 py-1 bg-white/20 backdrop-blur-md text-white text-xs font-bold rounded-full mb-4 border border-white/20">
-                    HAFTANIN EDİTÖR SEÇİMİ
-                </span>
+            <span className="inline-block px-3 py-1 bg-white/20 backdrop-blur-md text-white text-xs font-bold rounded-full mb-4 border border-white/20">
+              HAFTANIN EDİTÖR SEÇİMİ
+            </span>
                         <h2 className="text-3xl md:text-5xl font-black text-white mb-4 leading-tight">
                             "Deep Work": Odaklanma Sanatı
                         </h2>
                         <p className="text-blue-100 text-lg mb-8 leading-relaxed">
                             Cal Newport'un efsanevi kitabından, dijital çağda dikkatinizi nasıl yöneteceğinize dair 5 altın kuralı derledik.
                         </p>
-                        <button className="bg-white text-blue-600 px-8 py-3 rounded-xl font-bold text-lg hover:bg-blue-50 transition-colors shadow-lg flex items-center gap-2">
+                        <button
+                            onClick={() => navigate('/articles')}
+                            className="bg-white text-blue-600 px-8 py-3 rounded-xl font-bold text-lg hover:bg-blue-50 transition-colors shadow-lg flex items-center gap-2"
+                        >
                             <BookOpen size={20} /> Hemen Oku
                         </button>
                     </div>
                 </div>
 
                 {/* 2. KATEGORİ IZGARASI */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
 
                     {/* SOL KOLON: MAKALELER */}
                     <div className="space-y-6">
@@ -67,10 +70,13 @@ const Discovery = () => {
                         </div>
 
                         {/* Kart 1 */}
-                        <div className="bg-white/80 backdrop-blur-xl border border-white/60 p-5 rounded-3xl hover:shadow-xl hover:shadow-blue-900/5 transition-all cursor-pointer group">
+                        <div
+                            onClick={() => navigate('/articles')}
+                            className="bg-white/80 backdrop-blur-xl border border-white/60 p-5 rounded-3xl hover:shadow-xl hover:shadow-blue-900/5 transition-all cursor-pointer group"
+                        >
                             <div className="flex justify-between items-start mb-3">
                                 <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-md">Verimlilik</span>
-                                <span className="text-xs text-slate-400 flex items-center gap-1"><Clock size={12}/> 5 dk</span>
+                                <span className="text-xs text-slate-400 flex items-center gap-1"><Clock size={12} /> 5 dk</span>
                             </div>
                             <h4 className="font-bold text-slate-800 text-lg mb-2 group-hover:text-blue-600 transition-colors">Pomodoro Tekniği 101</h4>
                             <p className="text-sm text-slate-500 mb-4">25 dakika çalışıp 5 dakika mola vererek beyninizi nasıl hacklersiniz?</p>
@@ -81,17 +87,20 @@ const Discovery = () => {
                         </div>
 
                         {/* Kart 2 */}
-                        <div className="bg-white/80 backdrop-blur-xl border border-white/60 p-5 rounded-3xl hover:shadow-xl hover:shadow-blue-900/5 transition-all cursor-pointer group">
+                        <div
+                            onClick={() => navigate('/articles')}
+                            className="bg-white/80 backdrop-blur-xl border border-white/60 p-5 rounded-3xl hover:shadow-xl hover:shadow-blue-900/5 transition-all cursor-pointer group"
+                        >
                             <div className="flex justify-between items-start mb-3">
                                 <span className="text-xs font-bold text-purple-600 bg-purple-50 px-2 py-1 rounded-md">Bilim</span>
-                                <span className="text-xs text-slate-400 flex items-center gap-1"><Clock size={12}/> 8 dk</span>
+                                <span className="text-xs text-slate-400 flex items-center gap-1"><Clock size={12} /> 8 dk</span>
                             </div>
                             <h4 className="font-bold text-slate-800 text-lg mb-2 group-hover:text-purple-600 transition-colors">Dopamin Detoksu</h4>
                             <p className="text-sm text-slate-500">Sosyal medya bağımlılığından kurtulup gerçek hayata dönmenin yolları.</p>
                         </div>
                     </div>
 
-                    {/* ORTA KOLON: VİDEOLAR */}
+                    {/* ORTA SOL: VİDEOLAR */}
                     <div className="space-y-6">
                         <div className="flex items-center gap-3 mb-2">
                             <div className="p-2 bg-teal-100 text-teal-600 rounded-lg">
@@ -101,7 +110,10 @@ const Discovery = () => {
                         </div>
 
                         {/* Kart 1 */}
-                        <div className="bg-white/80 backdrop-blur-xl border border-white/60 p-5 rounded-3xl hover:shadow-xl hover:shadow-teal-900/5 transition-all cursor-pointer group">
+                        <div
+                            onClick={() => navigate('/videos')}
+                            className="bg-white/80 backdrop-blur-xl border border-white/60 p-5 rounded-3xl hover:shadow-xl hover:shadow-teal-900/5 transition-all cursor-pointer group"
+                        >
                             {/* Video Thumbnail (Temsili) */}
                             <div className="w-full h-32 bg-slate-200 rounded-2xl mb-4 relative overflow-hidden">
                                 <div className="absolute inset-0 bg-black/20 flex items-center justify-center group-hover:bg-black/10 transition-colors">
@@ -115,7 +127,10 @@ const Discovery = () => {
                         </div>
 
                         {/* Kart 2 */}
-                        <div className="bg-white/80 backdrop-blur-xl border border-white/60 p-5 rounded-3xl hover:shadow-xl hover:shadow-teal-900/5 transition-all cursor-pointer group">
+                        <div
+                            onClick={() => navigate('/videos')}
+                            className="bg-white/80 backdrop-blur-xl border border-white/60 p-5 rounded-3xl hover:shadow-xl hover:shadow-teal-900/5 transition-all cursor-pointer group"
+                        >
                             <div className="flex justify-between items-start mb-3">
                                 <span className="text-xs font-bold text-teal-600 bg-teal-50 px-2 py-1 rounded-md">Motivasyon</span>
                             </div>
@@ -124,7 +139,7 @@ const Discovery = () => {
                         </div>
                     </div>
 
-                    {/* SAĞ KOLON: PODCASTLER */}
+                    {/* ORTA SAĞ: PODCASTLER */}
                     <div className="space-y-6">
                         <div className="flex items-center gap-3 mb-2">
                             <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
@@ -134,7 +149,10 @@ const Discovery = () => {
                         </div>
 
                         {/* Kart 1 */}
-                        <div className="bg-white/80 backdrop-blur-xl border border-white/60 p-5 rounded-3xl hover:shadow-xl hover:shadow-indigo-900/5 transition-all cursor-pointer group">
+                        <div
+                            onClick={() => navigate('/podcasts')}
+                            className="bg-white/80 backdrop-blur-xl border border-white/60 p-5 rounded-3xl hover:shadow-xl hover:shadow-indigo-900/5 transition-all cursor-pointer group"
+                        >
                             <div className="flex items-center gap-4 mb-4">
                                 <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center text-white shadow-lg">
                                     <Compass size={24} />
@@ -146,7 +164,7 @@ const Discovery = () => {
                             </div>
                             <div className="flex items-center justify-between mt-2">
                                 <button className="p-2 bg-indigo-50 text-indigo-600 rounded-full hover:bg-indigo-100 transition-colors">
-                                    <PlayCircle size={20} fill="currentColor"/>
+                                    <PlayCircle size={20} fill="currentColor" />
                                 </button>
                                 <button className="text-slate-400 hover:text-red-500 transition-colors">
                                     <Heart size={20} />
@@ -155,7 +173,10 @@ const Discovery = () => {
                         </div>
 
                         {/* Kart 2 */}
-                        <div className="bg-white/80 backdrop-blur-xl border border-white/60 p-5 rounded-3xl hover:shadow-xl hover:shadow-indigo-900/5 transition-all cursor-pointer group">
+                        <div
+                            onClick={() => navigate('/podcasts')}
+                            className="bg-white/80 backdrop-blur-xl border border-white/60 p-5 rounded-3xl hover:shadow-xl hover:shadow-indigo-900/5 transition-all cursor-pointer group"
+                        >
                             <div className="flex items-center gap-4 mb-4">
                                 <div className="w-16 h-16 bg-gradient-to-br from-pink-500 to-rose-600 rounded-2xl flex items-center justify-center text-white shadow-lg">
                                     <Star size={24} />
@@ -167,12 +188,59 @@ const Discovery = () => {
                             </div>
                             <div className="flex items-center justify-between mt-2">
                                 <button className="p-2 bg-pink-50 text-pink-600 rounded-full hover:bg-pink-100 transition-colors">
-                                    <PlayCircle size={20} fill="currentColor"/>
+                                    <PlayCircle size={20} fill="currentColor" />
                                 </button>
                                 <button className="text-slate-400 hover:text-red-500 transition-colors">
                                     <Heart size={20} />
                                 </button>
                             </div>
+                        </div>
+                    </div>
+
+                    {/* SAĞ KOLON: QUIZLER */}
+                    <div className="space-y-6">
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="p-2 bg-amber-100 text-amber-700 rounded-lg">
+                                <HelpCircle size={24} />
+                            </div>
+                            <h3 className="text-xl font-bold text-slate-800">Quizler</h3>
+                        </div>
+
+                        {/* Kart 1 */}
+                        <div
+                            onClick={() => navigate('/quiz')}
+                            className="bg-white/80 backdrop-blur-xl border border-white/60 p-5 rounded-3xl hover:shadow-xl hover:shadow-amber-900/5 transition-all cursor-pointer group"
+                        >
+                            <div className="flex items-center gap-4 mb-4">
+                                <div className="w-16 h-16 bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl flex items-center justify-center text-white shadow-lg">
+                                    <HelpCircle size={24} />
+                                </div>
+                                <div>
+                                    <h4 className="font-bold text-slate-800 group-hover:text-amber-700 transition-colors">Hızlı Quiz</h4>
+                                    <p className="text-xs text-slate-500">5 soru • 2-3 dk</p>
+                                </div>
+                            </div>
+                            <p className="text-sm text-slate-500 mb-4">Kısa testlerle öğrendiklerini pekiştir.</p>
+                            <button className="w-full bg-amber-50 text-amber-700 font-bold py-2.5 rounded-xl hover:bg-amber-100 transition-colors">
+                                Quize Başla
+                            </button>
+                        </div>
+
+                        {/* Kart 2 */}
+                        <div
+                            onClick={() => navigate('/quiz')}
+                            className="bg-white/80 backdrop-blur-xl border border-white/60 p-5 rounded-3xl hover:shadow-xl hover:shadow-amber-900/5 transition-all cursor-pointer group"
+                        >
+                            <div className="flex items-center gap-4 mb-4">
+                                <div className="w-16 h-16 bg-gradient-to-br from-yellow-500 to-amber-600 rounded-2xl flex items-center justify-center text-white shadow-lg">
+                                    <Star size={24} />
+                                </div>
+                                <div>
+                                    <h4 className="font-bold text-slate-800 group-hover:text-yellow-700 transition-colors">Günün Mini Testi</h4>
+                                    <p className="text-xs text-slate-500">3 soru • 1 dk</p>
+                                </div>
+                            </div>
+                            <p className="text-sm text-slate-500">Bugün öğrendiklerini hızla kontrol et.</p>
                         </div>
                     </div>
 
