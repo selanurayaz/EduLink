@@ -7,13 +7,91 @@ import {
 import FocusCamera from '../components/camera/FocusCamera';
 import { supabase } from '../lib/supabaseClient';
 
+//quizler için grafik verisi importları
+import {
+    LineChart,
+    Line,
+    XAxis,
+    YAxis,
+    Tooltip,
+    ResponsiveContainer,
+} from "recharts";
+
+
 const Dashboard: React.FC = () => {
     const navigate = useNavigate();
+    const [quizCount, setQuizCount] = React.useState<number>(0);
+    const [averageScore, setAverageScore] = React.useState<number>(0);
+    const [lastQuizDate, setLastQuizDate] = React.useState<string | null>(null);
+    const [quizLoading, setQuizLoading] = React.useState<boolean>(true);
+    const [quizTrend, setQuizTrend] = React.useState<{ date: string; score: number }[]>([]);
+
+
+
 
     const handleLogout = async () => {
         await supabase.auth.signOut();
         navigate("/");
     };
+    React.useEffect(() => {
+        const fetchQuizSummary = async () => {
+
+            const { data: trendData } = await supabase
+                .from("quiz_results")
+                .select("score, total_questions, created_at")
+                .order("created_at", { ascending: true });
+
+            if (trendData) {
+                setQuizTrend(
+                    trendData.map((q) => ({
+                        date: new Date(q.created_at).toLocaleDateString("tr-TR"),
+                        score: Math.round((q.score / q.total_questions) * 100),
+                    }))
+                );
+            }
+
+
+            setQuizLoading(true);
+
+            // 1️⃣ Quiz sayısı
+            const { count } = await supabase
+                .from("quiz_results")
+                .select("*", { count: "exact", head: true });
+
+            // 2️⃣ Ortalama skor
+            const { data: scores } = await supabase
+                .from("quiz_results")
+                .select("score, total_questions");
+
+            // 3️⃣ Son quiz tarihi
+            const { data: lastQuiz } = await supabase
+                .from("quiz_results")
+                .select("created_at")
+                .order("created_at", { ascending: false })
+                .limit(1)
+                .single();
+
+            setQuizCount(count ?? 0);
+
+            if (scores && scores.length > 0) {
+                const avg =
+                    scores.reduce(
+                        (acc, q) => acc + q.score / q.total_questions,
+                        0
+                    ) / scores.length;
+
+                setAverageScore(Math.round(avg * 100));
+            } else {
+                setAverageScore(0);
+            }
+
+            setLastQuizDate(lastQuiz?.created_at ?? null);
+            setQuizLoading(false);
+        };
+
+        void fetchQuizSummary();
+    }, []);
+
 
     return (
         // YENİ TASARIM: Mavi/Canlı Atmosfer
@@ -128,6 +206,42 @@ const Dashboard: React.FC = () => {
 
                     {/* SAĞ KOLON (1 birim) */}
                     <div className="space-y-6">
+                        {/* --- QUIZ ÖZET KARTLARI --- */}
+                        <button
+                            onClick={() => navigate("/quiz-history")}
+                            className="w-full bg-white/70 backdrop-blur-xl border border-white/60 rounded-2xl p-4 text-left font-bold text-blue-700 hover:bg-white transition"
+                        >
+                            Quiz Geçmişini Gör →
+                        </button>
+
+
+                        <div className="grid grid-cols-3 gap-3">
+                            <div className="bg-white/70 backdrop-blur-xl border border-white/60 rounded-2xl p-4 text-center shadow-sm">
+                                <div className="text-xs text-slate-500 font-semibold mb-1">Quiz</div>
+                                <div className="text-2xl font-black text-blue-600">
+                                    {quizLoading ? "--" : quizCount}
+                                </div>
+                            </div>
+
+                            <div className="bg-white/70 backdrop-blur-xl border border-white/60 rounded-2xl p-4 text-center shadow-sm">
+                                <div className="text-xs text-slate-500 font-semibold mb-1">Başarı</div>
+                                <div className="text-2xl font-black text-green-600">
+                                    {quizLoading ? "--" : `%${averageScore}`}
+                                </div>
+                            </div>
+
+                            <div className="bg-white/70 backdrop-blur-xl border border-white/60 rounded-2xl p-4 text-center shadow-sm">
+                                <div className="text-xs text-slate-500 font-semibold mb-1">Son Quiz</div>
+                                <div className="text-sm font-bold text-slate-700">
+                                    {quizLoading
+                                        ? "--"
+                                        : lastQuizDate
+                                            ? new Date(lastQuizDate).toLocaleDateString("tr-TR")
+                                            : "Yok"}
+                                </div>
+                            </div>
+                        </div>
+
 
                         {/* --- 1. YENİ GİRİŞ KAPISI: İLERLEME KARTI (BURASI EKLENDİ) --- */}
                         <div
@@ -191,6 +305,29 @@ const Dashboard: React.FC = () => {
                                 Raporu Görüntüle <ChevronRight size={18} />
                             </div>
                         </div>
+
+
+                        {/* QUİZ BAŞARI TRENDİ */}
+                        <div className="bg-white/70 backdrop-blur-xl border border-white/60 rounded-[2rem] p-7 shadow-sm">
+                            <h3 className="font-bold text-slate-800 text-lg mb-4">Quiz Başarı Trendi (%)</h3>
+
+                            {quizTrend.length === 0 ? (
+                                <p className="text-sm text-slate-500">Henüz veri yok.</p>
+                            ) : (
+                                <div className="w-full h-[220px]">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <LineChart data={quizTrend}>
+                                            <XAxis dataKey="date" />
+                                            <YAxis domain={[0, 100]} />
+                                            <Tooltip />
+                                            <Line type="monotone" dataKey="score" strokeWidth={3} />
+                                        </LineChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            )}
+                        </div>
+
+
 
                         {/* 3. KUTU: Planlayıcı */}
                         <div
