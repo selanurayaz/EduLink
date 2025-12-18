@@ -1,9 +1,9 @@
 import { createContext, useContext, useEffect, useState } from "react"
-import { supabase, authChannel } from "../lib/supabaseClient"
+import { supabase } from "../lib/supabaseClient"
+import type { Session } from "@supabase/supabase-js"
 
-// Auth türü
 type AuthState = {
-  session: any | null
+  session: Session | null
   loading: boolean
 }
 
@@ -13,46 +13,34 @@ const AuthContext = createContext<AuthState>({
 })
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [session, setSession] = useState<any | null>(null)
+  const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
 
-  // İlk yüklemede session oku
   useEffect(() => {
-    let active = true
+    let mounted = true
 
-    async function load() {
-      const { data } = await supabase.auth.getSession()
-      if (!active) return
-      setSession(data?.session ?? null)
+    supabase.auth.getSession().then(({ data }) => {
+      if (!mounted) return
+      setSession(data.session)
       setLoading(false)
-    }
+    })
 
-    load()
-
-    // Supabase event listener
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      (_event, newSession) => {
-        setSession(newSession)
-      }
+    const { data: subscription } = supabase.auth.onAuthStateChange(
+        (_event, session) => {
+          setSession(session)
+        }
     )
 
-    // Multi-tab dinleme
-    authChannel.onmessage = (msg) => {
-      console.log("[AuthProvider] BroadcastChannel:", msg.data)
-      setSession(msg.data.session)
-    }
-
     return () => {
-      active = false
-      listener.subscription.unsubscribe()
-      authChannel.close()
+      mounted = false
+      subscription.subscription.unsubscribe()
     }
   }, [])
 
   return (
-    <AuthContext.Provider value={{ session, loading }}>
-      {children}
-    </AuthContext.Provider>
+      <AuthContext.Provider value={{ session, loading }}>
+        {children}
+      </AuthContext.Provider>
   )
 }
 
