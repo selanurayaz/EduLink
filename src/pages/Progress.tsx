@@ -28,8 +28,8 @@ type ProgressRow = {
     tamamlandi_mi: boolean | null;
     son_gorulme_tarihi: string | null;
 
-    // ✅ sende join ARRAY dönüyor
-    content_item: ContentItem[];
+    // ✅ Supabase join bazen object, bazen array döndürebilir
+    content_item?: ContentItem | ContentItem[] | null;
 };
 
 const norm = (v: unknown) => String(v ?? "").toLowerCase().trim();
@@ -46,6 +46,13 @@ const openUrl = (url?: string | null) => {
 };
 
 const clampPct = (v: number) => Math.max(0, Math.min(100, v));
+
+// ✅ content_item'i güvenli biçimde tek objeye indirger
+const getContent = (r: ProgressRow): ContentItem | null => {
+    const ci = r.content_item;
+    if (!ci) return null;
+    return Array.isArray(ci) ? (ci[0] ?? null) : ci;
+};
 
 const Progress = () => {
     const navigate = useNavigate();
@@ -120,7 +127,40 @@ const Progress = () => {
             return;
         }
 
-        setRows((res.data ?? []) as unknown as ProgressRow[]);
+        const data = (res.data ?? []) as unknown as ProgressRow[];
+
+        // ✅ JOIN boş geldiyse, içerikleri toplu şekilde content_items'tan tamamla
+        const missingIds = data
+            .filter((r) => !getContent(r))
+            .map((r) => r.icerik_id)
+            .filter(Boolean);
+
+        if (missingIds.length > 0) {
+            const fillRes = await supabase
+                .from("content_items")
+                .select("id,type,title,description,url,thumbnail_url,duration_seconds")
+                .in("id", missingIds);
+
+            if (fillRes.error) {
+                console.error("fill content_items error:", fillRes.error);
+            } else {
+                const map = new Map<string, ContentItem>();
+                (fillRes.data as ContentItem[] | null)?.forEach((c) => map.set(c.id, c));
+
+                const filled = data.map((r) => {
+                    if (getContent(r)) return r;
+                    const c = map.get(r.icerik_id);
+                    // ✅ object olarak dolduruyoruz (array karmaşasını bitirir)
+                    return c ? { ...r, content_item: c } : r;
+                });
+
+                setRows(filled);
+                setLoading(false);
+                return;
+            }
+        }
+
+        setRows(data);
         setLoading(false);
     };
 
@@ -143,12 +183,9 @@ const Progress = () => {
             return;
         }
 
-        // ✅ anında UI güncelle -> ongoing/completed otomatik yeniden hesaplanır
         setRows((prev) =>
             prev.map((r) =>
-                r.id === progressId
-                    ? { ...r, ilerleme_yuzdesi: pct, tamamlandi_mi: done }
-                    : r
+                r.id === progressId ? { ...r, ilerleme_yuzdesi: pct, tamamlandi_mi: done } : r
             )
         );
     };
@@ -164,7 +201,7 @@ const Progress = () => {
 
         await updateProgress(r.id, next);
 
-        const c = r.content_item?.[0];
+        const c = getContent(r);
         openUrl(c?.url);
     };
 
@@ -284,7 +321,7 @@ const Progress = () => {
                 ) : (
                     <div className="grid grid-cols-1 gap-6 mb-12">
                         {ongoing.map((r) => {
-                            const c = r.content_item?.[0];
+                            const c = getContent(r);
                             const t = c?.type ?? "video";
                             const accent = accentFor(t);
                             const pct = clampPct(Number(r.ilerleme_yuzdesi ?? 0));
@@ -322,15 +359,11 @@ const Progress = () => {
                                             </div>
 
                                             <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden mb-2 mt-4">
-                                                <div
-                                                    className={`h-full ${accent.bar} rounded-full`}
-                                                    style={{ width: `${pct}%` }}
-                                                />
+                                                <div className={`h-full ${accent.bar} rounded-full`} style={{ width: `${pct}%` }} />
                                             </div>
                                             <p className={`text-right text-xs font-bold ${accent.text}`}>%{pct}</p>
                                         </div>
 
-                                        {/* ✅ Devam butonu artık % arttırıyor */}
                                         <button
                                             onClick={() => handleContinue(r)}
                                             className={`${accent.btnText} font-bold text-sm px-6 py-3 ${accent.btnBg} rounded-xl ${accent.btnHover} transition-colors`}
@@ -366,7 +399,7 @@ const Progress = () => {
                 ) : (
                     <div className="space-y-4">
                         {completed.map((r) => {
-                            const c = r.content_item?.[0];
+                            const c = getContent(r);
                             return (
                                 <div
                                     key={r.id}
