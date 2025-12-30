@@ -94,7 +94,14 @@ const Login: React.FC = () => {
             <div className="space-y-1.5">
               <div className="flex justify-between items-center px-1">
                 <label className="text-sm font-bold text-slate-700">Şifre</label>
-                <a href="#" className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline">Şifremi Unuttum?</a>
+                <button
+                    type="button"
+                    onClick={() => navigate("/forgot-password")}
+                    className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline"
+                >
+                  Şifremi Unuttum?
+                </button>
+
               </div>
               <div className="relative group">
                 <Lock className="absolute left-3 top-3.5 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={20} />

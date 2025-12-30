@@ -464,66 +464,54 @@ const Dashboard: React.FC = () => {
                             <div className="absolute inset-0 bg-gradient-to-br from-indigo-100/40 via-blue-100/20 to-transparent"></div>
 
                             <div className="relative z-10">
-                                <h3 className="text-lg font-black text-slate-900 mb-1">Quiz Performansı</h3>
-                                <p className="text-sm text-slate-600 font-medium mb-4">
-                                    Son 10 günün ortalama başarın
+                                <h3 className="text-lg font-black text-slate-900 mb-1">
+                                    Quiz Performansı
+                                </h3>
+
+                                <p className="text-sm text-slate-600 font-medium mb-6">
+                                    Son 10 günün ortalama başarı yüzdesi
                                 </p>
 
-                                <div className="flex items-end justify-between gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+                                    {/* SOL: SAYISAL ÖZET */}
                                     <div>
-                                        <div className="text-5xl font-black text-slate-900 tracking-tight">
+                                        <div className="text-6xl font-black text-slate-900 tracking-tight">
                                             {quizLoading ? "--" : averageScore}
+                                            <span className="text-2xl font-bold text-slate-500">%</span>
                                         </div>
-                                        <div className="text-xs text-slate-500 font-semibold mt-1">
+
+                                        <div className="text-xs text-slate-500 font-semibold mt-2">
                                             {lastQuizDate
                                                 ? `Son Quiz: ${new Date(lastQuizDate).toLocaleDateString("tr-TR")}`
                                                 : "Henüz quiz yok"}
                                         </div>
                                     </div>
 
-                                    <div className="w-40 h-20 bg-white/50 backdrop-blur-md rounded-2xl border border-white/60 shadow-sm p-2">
+                                    {/* SAĞ: GRAFİK */}
+                                    <div className="md:col-span-2 h-64">
                                         {quizLoading ? (
-                                            <div className="w-full h-full flex items-center justify-center text-xs text-slate-500 font-semibold">
+                                            <div className="w-full h-full flex items-center justify-center text-sm text-slate-500">
                                                 Yükleniyor...
                                             </div>
                                         ) : (
                                             <ResponsiveContainer width="100%" height="100%">
                                                 <LineChart data={quizTrend}>
-                                                    <XAxis dataKey="date" hide />
-                                                    <YAxis hide domain={[0, 100]} />
-                                                    <Tooltip
-                                                        formatter={(value: unknown, _name: unknown, props: unknown) => {
-                                                            const payload =
-                                                                typeof props === "object" && props !== null && "payload" in props
-                                                                    ? (props as { payload?: unknown }).payload
-                                                                    : undefined;
-
-                                                            if (
-                                                                payload &&
-                                                                typeof payload === "object" &&
-                                                                "correct" in payload &&
-                                                                "total" in payload &&
-                                                                "percent" in payload
-                                                            ) {
-                                                                const p = payload as { correct: number; total: number; percent: number };
-                                                                return [`${p.correct}/${p.total} (%${p.percent})`, "Skor"];
-                                                            }
-
-                                                            return [String(value ?? ""), "Skor"];
-                                                        }}
-                                                    />
-
+                                                    <XAxis dataKey="date" />
+                                                    <YAxis domain={[0, 100]} />
+                                                    <Tooltip formatter={(value) => [`%${value}`, "Başarı"]} />
                                                     <Line
                                                         type="monotone"
                                                         dataKey="percent"
                                                         stroke="#4f46e5"
                                                         strokeWidth={3}
-                                                        dot={false}
+                                                        dot={{ r: 5 }}
+                                                        activeDot={{ r: 7 }}
                                                     />
                                                 </LineChart>
                                             </ResponsiveContainer>
                                         )}
                                     </div>
+
                                 </div>
                             </div>
                         </div>

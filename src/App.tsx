@@ -22,6 +22,11 @@ import { FocusTrackingProvider } from "./context/FocusTrackingProvider";
 import { ToastProvider } from "./context/ToastProvider";
 import { installAlarmAudioAutoUnlock } from "@/lib/alarmAudio.ts";
 
+//sifremi unuttum kısmı için
+import ForgotPassword from "./pages/ForgotPassword";
+import { ResetPasswordPage } from "./pages/ResetPassword";
+
+
 // Public sayfalar: Kamera + Toast yok
 function PublicLayout() {
     return <Outlet />;
@@ -53,6 +58,10 @@ function AppInner() {
                 <Route path="/" element={<LandingPage />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/signup" element={<Signup />} />
+                {/* Şifre sıfırlama */}
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password" element={<ResetPasswordPage />} />
+
             </Route>
 
             {/* App routes (provider içinde) */}
