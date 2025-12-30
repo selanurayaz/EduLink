@@ -195,12 +195,12 @@ const Dashboard: React.FC = () => {
 
     return (
         // YENİ TASARIM: Mavi/Canlı Atmosfer
-        <div className="min-h-screen bg-slate-50 relative overflow-hidden font-sans selection:bg-blue-200">
+        <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-blue-100 to-sky-50">
 
-            {/* Arka plan dekoratif efekt */}
+        {/* Arka plan dekoratif efekt */}
             <div className="absolute inset-0 -z-10">
-                <div className="absolute -top-40 -left-40 w-[500px] h-[500px] bg-blue-200/50 rounded-full blur-3xl animate-pulse"></div>
-                <div className="absolute -bottom-40 -right-40 w-[500px] h-[500px] bg-indigo-200/50 rounded-full blur-3xl animate-pulse delay-1000"></div>
+                <div className="absolute -top-40 -left-40 w-[500px] h-[500px] bg-blue-300/60 rounded-full blur-3xl animate-pulse"></div>
+                <div className="absolute -bottom-40 -right-40 w-[500px] h-[500px] bg-indigo-300/60 rounded-full blur-3xl animate-pulse delay-1000"></div>
             </div>
 
             {/* TOP BAR */}
@@ -239,8 +239,10 @@ const Dashboard: React.FC = () => {
             <main className="max-w-7xl mx-auto px-4 py-6 space-y-6">
 
                 {/* HERO */}
-                <div className="relative overflow-hidden rounded-3xl bg-white/70 backdrop-blur-xl border border-white/60 shadow-xl p-6">
-                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-100/40 via-blue-100/20 to-transparent"></div>
+                <div className="relative overflow-hidden rounded-3xl bg-white/60 backdrop-blur-2xl border border-indigo-200/50 shadow-xl
+ p-6">
+                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-200/60 via-blue-200/40 to-transparent
+"></div>
                     <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                         <div>
                             <h2 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">
@@ -265,7 +267,7 @@ const Dashboard: React.FC = () => {
                         <div className="absolute inset-0 bg-gradient-to-r from-indigo-100/60 via-blue-100/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
 
                         <div className="relative z-10 flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-600 to-blue-500 flex items-center justify-center shadow-lg shadow-indigo-200">
+                            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-sky-500 flex items-center justify-center shadow-lg shadow-indigo-200">
                                 <Compass size={24} className="text-white" />
                             </div>
                             <div>
@@ -286,7 +288,8 @@ const Dashboard: React.FC = () => {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
                     {/* CAMERA CARD */}
-                    <div className="rounded-3xl bg-white/70 backdrop-blur-xl border border-white/60 shadow-xl p-6 relative overflow-hidden">
+                    <div className="rounded-3xl bg-white/60 backdrop-blur-2xl border border-indigo-200/50 shadow-xl
+ p-6 relative overflow-hidden">
                         <div className="absolute inset-0 bg-gradient-to-br from-blue-100/40 via-indigo-100/20 to-transparent"></div>
 
                         <div className="relative z-10">
@@ -374,7 +377,7 @@ const Dashboard: React.FC = () => {
                                     </div>
                                 )}
                             </div>
-                            
+
                             {/* Kamera altı: Odak takibini kapat/aç */}
                             <div className="mt-4 flex justify-end">
                                 <button
@@ -397,7 +400,8 @@ const Dashboard: React.FC = () => {
 
                         <button
                             onClick={() => navigate("/quiz-history")}
-                            className="w-full bg-white/70 backdrop-blur-xl border border-white/60 shadow-xl rounded-2xl p-4 text-left font-bold text-blue-700 hover:bg-white transition hover:scale-[1.01] active:scale-[0.99] transition-transform"
+                            className="w-full bg-white/60 backdrop-blur-2xl border border-indigo-200/50 shadow-xl
+ rounded-2xl p-4 text-left font-bold text-blue-700 hover:bg-white transition hover:scale-[1.01] active:scale-[0.99] transition-transform"
                         >
                             Quiz Geçmişini Gör →
                         </button>
@@ -408,7 +412,8 @@ const Dashboard: React.FC = () => {
                             {/* 1. KUTU: Quiz */}
                             <div
                                 onClick={() => navigate('/quiz')}
-                                className="bg-white/70 backdrop-blur-xl border border-white/60 shadow-xl rounded-3xl p-5 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group relative overflow-hidden hover:scale-[1.01] active:scale-[0.995] transition-transform cursor-pointer"
+                                className="bg-white/60 backdrop-blur-2xl border border-indigo-200/50 shadow-xl
+ rounded-3xl p-5 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group relative overflow-hidden hover:scale-[1.01] active:scale-[0.995] transition-transform cursor-pointer"
                             >
                                 <div className="absolute top-0 right-0 w-36 h-36 rounded-full bg-gradient-to-br from-indigo-200/50 to-blue-200/20 blur-2xl -translate-y-10 translate-x-10 group-hover:scale-110 transition-transform duration-500"></div>
 
@@ -434,12 +439,13 @@ const Dashboard: React.FC = () => {
                             {/* 2. KUTU: Odak Skoru */}
                             <div
                                 onClick={() => navigate('/analytics')}
-                                className="bg-white/70 backdrop-blur-xl border border-white/60 shadow-xl rounded-3xl p-5 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group relative overflow-hidden hover:scale-[1.01] active:scale-[0.995] transition-transform cursor-pointer"
+                                className="bg-white/60 backdrop-blur-2xl border border-indigo-200/50 shadow-xl
+ rounded-3xl p-5 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group relative overflow-hidden hover:scale-[1.01] active:scale-[0.995] transition-transform cursor-pointer"
                             >
                                 <div className="absolute top-0 right-0 w-36 h-36 rounded-full bg-gradient-to-br from-blue-200/50 to-indigo-200/20 blur-2xl -translate-y-10 translate-x-10 group-hover:scale-110 transition-transform duration-500"></div>
 
                                 <div className="flex items-center gap-4 mb-5 relative z-10">
-                                    <div className="p-3 bg-gradient-to-br from-blue-600 to-indigo-500 rounded-2xl text-white transition-all duration-300 shadow-lg shadow-blue-100">
+                                    <div className="p-3 bg-gradient-to-br from-sky-500 to-indigo-500 rounded-2xl text-white transition-all duration-300 shadow-lg shadow-blue-100">
                                         <BarChart2 size={24} />
                                     </div>
                                     <div>
@@ -458,9 +464,37 @@ const Dashboard: React.FC = () => {
                             </div>
 
                         </div>
+                        {/* 3. KUTU: İlerleme (Progress) */}
+                        <div
+                            onClick={() => navigate('/progress')}
+                            className="bg-white/60 backdrop-blur-2xl border border-indigo-200/50 shadow-xl
+ rounded-3xl p-5 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group relative overflow-hidden hover:scale-[1.01] active:scale-[0.995] transition-transform cursor-pointer"
+                        >
+                            <div className="absolute top-0 right-0 w-36 h-36 rounded-full bg-gradient-to-br from-emerald-200/50 to-blue-200/20 blur-2xl -translate-y-10 translate-x-10 group-hover:scale-110 transition-transform duration-500"></div>
+
+                            <div className="flex items-center gap-4 mb-5 relative z-10">
+                                <div className="p-3 bg-gradient-to-br from-emerald-500 to-sky-500 rounded-2xl text-white transition-all duration-300 shadow-lg shadow-emerald-100">
+                                    <ArrowRight size={24} />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-slate-800 text-lg">İlerleme</h3>
+                                    <p className="text-xs text-slate-500 font-medium">Progress ekranı</p>
+                                </div>
+                            </div>
+
+                            <div className="text-sm text-slate-600 font-semibold relative z-10">
+                                İstatistiklerini ve gelişimini görüntüle.
+                            </div>
+
+                            <div className="flex items-center text-sm text-emerald-700 font-bold mt-4 relative z-10 group-hover:gap-2 transition-all">
+                                Aç <ChevronRight size={18} />
+                            </div>
+                        </div>
+
 
                         {/* QUIZ PERFORMANCE CARD */}
-                        <div className="bg-white/70 backdrop-blur-xl border border-white/60 shadow-xl rounded-3xl p-6 relative overflow-hidden">
+                        <div className="bg-white/60 backdrop-blur-2xl border border-indigo-200/50 shadow-xl
+ rounded-3xl p-6 relative overflow-hidden">
                             <div className="absolute inset-0 bg-gradient-to-br from-indigo-100/40 via-blue-100/20 to-transparent"></div>
 
                             <div className="relative z-10">
@@ -519,7 +553,8 @@ const Dashboard: React.FC = () => {
                         {/* PLANLAYICI KARTI */}
                         <div
                             onClick={() => navigate('/planner')}
-                            className="bg-white/70 backdrop-blur-xl border border-white/60 shadow-xl rounded-3xl p-6 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group relative overflow-hidden hover:scale-[1.01] active:scale-[0.995] transition-transform cursor-pointer"
+                            className="bg-white/60 backdrop-blur-2xl border border-indigo-200/50 shadow-xl
+ rounded-3xl p-6 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group relative overflow-hidden hover:scale-[1.01] active:scale-[0.995] transition-transform cursor-pointer"
                         >
                             <div className="absolute top-0 right-0 w-36 h-36 rounded-full bg-gradient-to-br from-purple-200/50 to-pink-200/20 blur-2xl -translate-y-10 translate-x-10 group-hover:scale-110 transition-transform duration-500"></div>
 
